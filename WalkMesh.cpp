@@ -43,7 +43,19 @@ WalkMesh::WalkMesh(std::vector< glm::vec3 > const &vertices_, std::vector< glm::
 //project pt to the plane of triangle a,b,c and return the barycentric weights of the projected point:
 glm::vec3 barycentric_weights(glm::vec3 const &a, glm::vec3 const &b, glm::vec3 const &c, glm::vec3 const &pt) {
 	//TODO: implement!
-	return glm::vec3(0.25f, 0.25f, 0.5f);
+	// compute barycentric coordinate using subtriangle areas
+	// based on //https://math.stackexchange.com/questions/544946/determine-if-projection-of-3d-point-onto-plane-is-within-a-triangle
+
+	glm::vec3 u = b - a;
+	glm::vec3 v = c - a;
+	glm::vec3 n = glm::cross(u, v);
+	glm::vec3 w = pt - a;
+
+	float gamma = glm::dot(glm::cross(u, w), n) / glm::dot(n, n);
+	float beta = glm::dot(glm::cross(w, v), n) / glm::dot(n, n);
+	float alpha = 1 - gamma - beta;
+
+	return glm::vec3(alpha, beta, gamma);
 }
 
 WalkPoint WalkMesh::nearest_walk_point(glm::vec3 const &world_point) const {
