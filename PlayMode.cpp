@@ -45,6 +45,13 @@ Load< WalkMeshes > game_walkmeshes(LoadTagDefault, []() -> WalkMeshes const * {
 });
 
 PlayMode::PlayMode() : scene(*game_scene) {
+
+	for (auto &drawable : scene.drawables) {
+		if (drawable.transform->name.find("Cone") != std::string::npos) {
+			cones.emplace_back(&drawable);
+		}
+	}
+
 	//create a player transform:
 	scene.transforms.emplace_back();
 	player.transform = &scene.transforms.back();
