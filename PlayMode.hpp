@@ -17,7 +17,15 @@ struct PlayMode : Mode {
 	virtual void update(float elapsed) override;
 	virtual void draw(glm::uvec2 const &drawable_size) override;
 
+	void gameWin();
+	void gameLose();
+
 	//----- game state -----
+	enum GameState{
+		PLAYING,
+		VICTORY,
+		DEFEAT
+	} gameState;
 
 	//input tracking:
 	struct Button {
@@ -38,4 +46,15 @@ struct PlayMode : Mode {
 	} player;
 
 	std::vector<Scene::Drawable *> cones;
+	glm::vec3 reset_spawn = glm::vec3(-20.0f, -20.0f, 0.0f);
+	uint8_t active_bullet_count = 0;
+	uint8_t inactive_bullet_count = 0;
+	uint8_t total_bullet_count = 0;
+
+	float elapsed_time_since = 0;
+	float cone_interval = 3;
+	bool check_time = true;
+	float coneSpeed = 2.0f;
+
+	std::string displayText = "";
 };

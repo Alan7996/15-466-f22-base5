@@ -48,7 +48,9 @@ PlayMode::PlayMode() : scene(*game_scene) {
 
 	for (auto &drawable : scene.drawables) {
 		if (drawable.transform->name.find("Cone") != std::string::npos) {
+			drawable.transform->position = reset_spawn;
 			cones.emplace_back(&drawable);
+			total_bullet_count += 1;
 		}
 	}
 
@@ -72,6 +74,8 @@ PlayMode::PlayMode() : scene(*game_scene) {
 
 	//start player walking at nearest walk point:
 	player.at = walkmesh->nearest_walk_point(player.transform->position);
+
+	gameState = PLAYING;
 
 }
 
@@ -143,7 +147,70 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 	return false;
 }
 
+void PlayMode::gameWin() {
+
+	gameState = VICTORY;
+
+	displayText = "You Win!";
+}
+
+void PlayMode::gameLose() {
+
+	gameState = DEFEAT;
+
+	displayText = "You Died!";
+}
+
 void PlayMode::update(float elapsed) {
+
+	if (gameState != PLAYING) return;
+
+	for (uint8_t i = inactive_bullet_count; i < active_bullet_count; i++) {
+		if (i >= total_bullet_count) continue;
+		
+		cones.at(i)->transform->position.z -= coneSpeed * elapsed;
+
+		// if the bullet exits screen, reset it
+		if (cones.at(i)->transform->position.z < -3.0f) {
+			inactive_bullet_count += 1;
+			if (i + 1 == total_bullet_count) gameWin();
+		}
+		else { // otherwise check collision
+			if (std::abs(cones.at(i)->transform->position.x - player.transform->position.x) <= 1.5f && 
+			    std::abs(cones.at(i)->transform->position.y - player.transform->position.y) <= 1.5f &&
+				std::abs(cones.at(i)->transform->position.z - player.transform->position.z) <= 1.5f) {
+				gameLose();
+			}
+		}
+	}
+
+	elapsed_time_since += elapsed;
+	if (gameState == PLAYING && check_time && elapsed_time_since > cone_interval) {
+		if (active_bullet_count == total_bullet_count) return;
+
+		elapsed_time_since = 0;
+		cone_interval -= 0.05f;
+
+		glm::vec3 playerPos = player.transform->position;
+		glm::vec2 xRange = glm::vec2(std::clamp(playerPos.x - 3.0f, -8.5f, 10.5f), std::clamp(playerPos.x + 3.0f, -8.5f, 10.5f));
+		glm::vec2 yRange = glm::vec2(std::clamp(playerPos.y - 3.0f, -9.5f, 9.5f), std::clamp(playerPos.y + 3.0f, -9.5f, 9.5f));
+
+		std::random_device rd;
+		std::mt19937 rng(rd());
+
+		// constrain the cone's initial position range
+		std::uniform_real_distribution<float> uniX(xRange.x, xRange.y);
+		std::uniform_real_distribution<float> uniY(yRange.x, yRange.y);
+
+		// initialize new bullet
+		cones.at(active_bullet_count)->transform->position = glm::vec3(static_cast<float>(uniX(rng)), static_cast<float>(uniY(rng)), 20.0f);
+
+		coneSpeed += 0.3f;
+
+		active_bullet_count += 1;
+		if (active_bullet_count == total_bullet_count) check_time = false;
+	}
+
 	//player walking:
 	{
 		//combine inputs into a move:
@@ -227,6 +294,10 @@ void PlayMode::update(float elapsed) {
 
 		camera->transform->position += move.x * right + move.y * forward;
 		*/
+
+		// check if out of bounds after moving
+		if (player.transform->position.x <= -8.8f || player.transform->position.x >= 10.8f ||
+		    player.transform->position.y <= -9.8f || player.transform->position.y >= 9.8f ) gameLose();
 	}
 
 	//reset button press counters:
@@ -289,6 +360,13 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + + 0.1f * H + ofs, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+
+		if (gameState != PLAYING) {
+			lines.draw_text(displayText,
+				glm::vec3(-aspect + 5.0f * H, -1.0 + 10.0f * H, 0.0),
+				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+				glm::u8vec4(0x00, 0x00, 0x00, 0x00));
+		}
 	}
 	GL_ERRORS();
 }
